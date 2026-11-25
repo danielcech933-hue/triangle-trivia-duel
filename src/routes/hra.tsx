@@ -1,0 +1,48 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useCallback, useEffect, useState } from "react";
+import { GameScreen } from "@/components/quiz/GameScreen";
+import { useGameDriver } from "@/components/quiz/useGameDriver";
+import { aiAnswer, aiPick } from "@/lib/quiz/ai";
+import { createGame, reduce, type Action } from "@/lib/quiz/engine";
+import { CATEGORIES, type CategoryId } from "@/lib/quiz/questions";
+
+type Search = { mode: "local" | "ai"; cat: CategoryId };
+
+export const Route = createFileRoute("/hra")({
+  validateSearch: (s: Record<string, unknown>): Search => ({
+    mode: s["mode"] === "ai" ? "ai" : "local",
+    cat: CATEGORIES.some((c) => c.id === s["cat"]) ? (s["cat"] as CategoryId) : "mix",
+  }),
+  head: () => ({
+    meta: [
+      { title: "Hra — AZ Duel" },
+      { name: "description", content: "Lokální AZ kvíz pro dva hráče u jednoho displeje nebo proti AI." },
+      { property: "og:title", content: "Hra — AZ Duel" },
+      { property: "og:description", content: "Lokální AZ kvíz pro dva hráče nebo proti AI." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
+  component: LocalGame,
+});
+
+function LocalGame() {
+  const { mode, cat } = Route.useSearch();
+  const [state, setState] = useState(() => createGame(cat, mode === "ai" ? { A: "Ty", B: "AI Robot" } : { A: "Hráč 1", B: "Hráč 2" }));
+  const dispatch = useCallback((a: Action) => setState((s) => reduce(s, a)), []);
+  useGameDriver(state, dispatch, true);
+
+  useEffect(() => {
+    if (mode !== "ai") return;
+    if (state.phase === "pick" && state.turn === "B") {
+      const t = setTimeout(() => dispatch({ type: "PICK", seat: "B", index: aiPick(state, "B") }), 1100);
+      return () => clearTimeout(t);
+    }
+    if (state.phase === "question" && state.answering === "B") {
+      const t = setTimeout(() => dispatch({ type: "ANSWER", seat: "B", text: aiAnswer(state) }), 2000 + Math.random() * 3500);
+      return () => clearTimeout(t);
+    }
+  }, [mode, state, dispatch]);
+
+  return <GameScreen state={state} mySeats={mode === "ai" ? ["A"] : ["A", "B"]} dispatch={dispatch} canRematch />;
+}

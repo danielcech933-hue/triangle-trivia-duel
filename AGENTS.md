@@ -28,3 +28,7 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+- Quiz game logic lives in pure modules under `src/lib/quiz/` (engine reducer, board graph, validation); UI only dispatches actions — keeps local, AI and online modes on one rule set.
+- Online rooms use a Realtime broadcast/presence channel with the host client as the authoritative reducer; guests only send PICK/ANSWER — no database tables needed for match state.

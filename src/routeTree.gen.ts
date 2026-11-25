@@ -10,33 +10,63 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HraRouteImport } from './routes/hra'
+import { Route as OnlineIndexRouteImport } from './routes/online.index'
+import { Route as OnlineCodeRouteImport } from './routes/online.$code'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HraRoute = HraRouteImport.update({
+  id: '/hra',
+  path: '/hra',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnlineIndexRoute = OnlineIndexRouteImport.update({
+  id: '/online/',
+  path: '/online/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnlineCodeRoute = OnlineCodeRouteImport.update({
+  id: '/online/$code',
+  path: '/online/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/hra': typeof HraRoute
+  '/online/$code': typeof OnlineCodeRoute
+  '/online/': typeof OnlineIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/hra': typeof HraRoute
+  '/online/$code': typeof OnlineCodeRoute
+  '/online': typeof OnlineIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/hra': typeof HraRoute
+  '/online/$code': typeof OnlineCodeRoute
+  '/online/': typeof OnlineIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/hra' | '/online/$code' | '/online/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/hra' | '/online/$code' | '/online'
+  id: '__root__' | '/' | '/hra' | '/online/$code' | '/online/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  HraRoute: typeof HraRoute
+  OnlineCodeRoute: typeof OnlineCodeRoute
+  OnlineIndexRoute: typeof OnlineIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +78,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hra': {
+      id: '/hra'
+      path: '/hra'
+      fullPath: '/hra'
+      preLoaderRoute: typeof HraRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/online/': {
+      id: '/online/'
+      path: '/online'
+      fullPath: '/online/'
+      preLoaderRoute: typeof OnlineIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/online/$code': {
+      id: '/online/$code'
+      path: '/online/$code'
+      fullPath: '/online/$code'
+      preLoaderRoute: typeof OnlineCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  HraRoute: HraRoute,
+  OnlineCodeRoute: OnlineCodeRoute,
+  OnlineIndexRoute: OnlineIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
