@@ -42,6 +42,7 @@ function LocalGame() {
       const t = setTimeout(() => dispatch({ type: "ANSWER", seat: "B", text: aiAnswer(state) }), 2000 + Math.random() * 3500);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [mode, state, dispatch]);
 
   return <GameScreen state={state} mySeats={mode === "ai" ? ["A"] : ["A", "B"]} dispatch={dispatch} canRematch />;

@@ -13,5 +13,6 @@ export function useGameDriver(state: GameState, dispatch: (a: Action) => void, e
       const t = setTimeout(() => dispatch({ type: "NEXT" }), RESULT_MS);
       return () => clearTimeout(t);
     }
+    return undefined;
   }, [enabled, state.phase, state.deadline, state.seq, dispatch]);
 }
