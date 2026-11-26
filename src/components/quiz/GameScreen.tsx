@@ -61,6 +61,7 @@ export function GameScreen({ state, mySeats, dispatch, canRematch }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const prevSeq = useRef(state.seq);
   const cat = CATEGORIES.find((c) => c.id === state.category);
+  const questionCategory = state.question ? CATEGORIES.find((c) => c.id === state.question?.cat) : undefined;
   const myAnswerTurn = state.phase === "question" && mySeats.includes(state.answering);
 
   useEffect(() => {
@@ -114,7 +115,7 @@ export function GameScreen({ state, mySeats, dispatch, canRematch }: Props) {
               <div className="flex items-center gap-4">
                 <div className="hex flex h-16 w-14 shrink-0 items-center justify-center bg-primary font-display text-3xl font-bold text-primary-foreground">{state.question.letter}</div>
                 <div className="text-xs uppercase tracking-widest text-muted-foreground">
-                  Pole {state.cellIdx! + 1} · {state.attempt === "black" ? "Souboj o černé pole" : state.attempt === "steal" ? "Šance pro soupeře" : "Otázka"}{state.question.diff === "hard" ? " · těžká" : ""}
+                  Pole {state.cellIdx! + 1} · {state.attempt === "black" ? "Souboj o černé pole" : state.attempt === "steal" ? "Šance pro soupeře" : "Otázka"}{questionCategory ? " · " + questionCategory.name : ""}{state.question.diff === "hard" ? " · těžká" : " · lehká"}
                   <div className={cn("mt-1 font-display text-base normal-case tracking-normal", seatColor(state.answering))}>Odpovídá {state.names[state.answering]}</div>
                 </div>
               </div>
