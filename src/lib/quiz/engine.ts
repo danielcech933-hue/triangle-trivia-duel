@@ -10,7 +10,6 @@ export type Attempt = "first" | "steal" | "black";
 export type Phase = "lobby" | "pick" | "question" | "result" | "over";
 
 export interface PublicQuestion { id: string; q: string; letter: string; answers: string[]; diff: QDiff }
-
 export interface SeatStats { correct: number; wrong: number; fastest: number | null }
 
 export interface GameState {
@@ -27,7 +26,6 @@ export interface GameState {
   question: PublicQuestion | null;
   answering: Seat;
   attempt: Attempt;
-  /** Seats that already answered the open question wrong (steal chain). */
   tried: Seat[];
   deadline: number;
   lastResult: { ok: boolean; by: Seat; text: string; attempt: Attempt; timeout: boolean } | null;
@@ -51,11 +49,8 @@ export type Action =
   | { type: "NAMES"; names: Record<Seat, string> };
 
 export interface GameOptions { difficulty?: Difficulty; players?: 2 | 3 }
-
 export const nextSeat = (seats: Seat[], s: Seat): Seat => seats[(seats.indexOf(s) + 1) % seats.length]!;
-/** Two-player helper kept for UI copy. */
 export const other = (s: Seat): Seat => (s === "A" ? "B" : "A");
-
 const emptyStats = (): SeatStats => ({ correct: 0, wrong: 0, fastest: null });
 
 export function createGame(category: CategoryId, names: Partial<Record<Seat, string>>, lobby = false, opts: GameOptions = {}): GameState {
@@ -74,12 +69,16 @@ export function createGame(category: CategoryId, names: Partial<Record<Seat, str
 }
 
 function draw(state: GameState): { q: Question; used: string[] } {
-  const pool = poolFor(state.category, state.difficulty);
+  const selected = poolFor(state.category, state.difficulty);
+  const relaxed = selected.length ? selected : poolFor(state.category, "mix");
+  const global = relaxed.length ? relaxed : poolFor("mix", "mix");
+  const pool = global.length ? global : poolFor("gaming", "mix");
   const usedSet = new Set(state.used);
   let avail = pool.filter((q) => !usedSet.has(q.id));
   let used = state.used;
   if (avail.length === 0) { avail = pool; used = []; }
-  const q = avail[Math.floor(Math.random() * avail.length)]!;
+  const q = avail[Math.floor(Math.random() * avail.length)];
+  if (!q) throw new Error("Databáze otázek je prázdná.");
   return { q, used: [...used, q.id] };
 }
 
@@ -124,7 +123,6 @@ export function reduce(s: GameState, a: Action, now = Date.now()): GameState {
       const cells = [...s.cells];
       if (!ok) {
         const tried = [...s.tried, by];
-        // Classic 2-player black-cell duel: a miss hands the cell to the opponent.
         if (s.attempt === "black" && s.players === 2) {
           cells[s.cellIdx] = other(by);
         } else {
@@ -147,14 +145,12 @@ export function reduce(s: GameState, a: Action, now = Date.now()): GameState {
   }
 }
 
-/** Next seat after the current answerer (in turn order) that hasn't tried yet. */
 function orderedNext(s: GameState, tried: Seat[]): Seat {
   let cur = s.answering;
   for (let i = 0; i < s.seats.length; i++) { cur = nextSeat(s.seats, cur); if (!tried.includes(cur)) return cur; }
   return cur;
 }
 
-/** Hide accepted answers from other clients while the question is open. */
 export function publicState(s: GameState): GameState {
   if (s.phase === "question" && s.question) return { ...s, question: { ...s.question, answers: [] } };
   return s;
