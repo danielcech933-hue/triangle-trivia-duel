@@ -76,7 +76,7 @@ function OnlineRoom() {
         const guest = guests.find((g) => g.id === guestIdRef.current) ?? guests[0];
         if (guest && stateRef.current && stateRef.current.names.B !== guest.p.name) {
           if (stateRef.current.phase !== "lobby") guestIdRef.current = guest.id;
-          hostDispatch({ type: "NAMES", names: { A: stateRef.current.names.A, B: guest.p.name } });
+          hostDispatch({ type: "NAMES", names: { ...stateRef.current.names, B: guest.p.name } });
         } else if (stateRef.current) {
           ch.send({ type: "broadcast", event: "state", payload: publicState(stateRef.current) });
         }
