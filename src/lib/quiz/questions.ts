@@ -1,17 +1,33 @@
-export type CategoryId = "gaming" | "svet" | "sport" | "serialy" | "filmy" | "mix";
-export interface Question { id: string; cat: Exclude<CategoryId, "mix">; q: string; answers: string[]; letter: string }
+import { BANK } from "./bank";
+
+export type BaseCategory = "gaming" | "svet" | "sport" | "serialy" | "filmy" | "hudba" | "historie" | "veda" | "literatura" | "jidlo";
+export type CategoryId = BaseCategory | "mix";
+export type QDiff = "easy" | "hard";
+export type Difficulty = QDiff | "mix";
+export interface Question { id: string; cat: BaseCategory; q: string; answers: string[]; letter: string; diff: QDiff }
 
 export const CATEGORIES: { id: CategoryId; name: string; desc: string; icon: string }[] = [
   { id: "gaming", name: "Herní věci", desc: "Videohry, konzole, postavy, esport", icon: "🎮" },
-  { id: "svet", name: "Ze světa", desc: "Zeměpis, historie, věda, zajímavosti", icon: "🌍" },
+  { id: "svet", name: "Ze světa", desc: "Zeměpis, státy, města, zajímavosti", icon: "🌍" },
   { id: "sport", name: "Sport", desc: "Fotbal, hokej, tenis, olympiáda, legendy", icon: "🏆" },
-  { id: "serialy", name: "Seriály", desc: "České i světové kultovní seriály a sitkomy", icon: "📺" },
+  { id: "serialy", name: "Seriály", desc: "České, slovenské i světové seriály", icon: "📺" },
   { id: "filmy", name: "Filmy", desc: "Filmy, režiséři, herci, hlášky", icon: "🎬" },
+  { id: "hudba", name: "Hudba", desc: "Kapely, hity, skladatelé, nástroje", icon: "🎵" },
+  { id: "historie", name: "Historie a mytologie", desc: "Panovníci, války, bohové a báje", icon: "📜" },
+  { id: "veda", name: "Věda a technika", desc: "Fyzika, chemie, vesmír, vynálezy, příroda", icon: "🔬" },
+  { id: "literatura", name: "Literatura a umění", desc: "Knihy, spisovatelé, malíři, divadlo", icon: "📚" },
+  { id: "jidlo", name: "Jídlo a životní styl", desc: "Kuchyně, nápoje, suroviny, speciality", icon: "🍕" },
   { id: "mix", name: "Vše dohromady", desc: "Velký mix všech témat", icon: "🌀" },
 ];
 
+export const DIFFICULTIES: { id: Difficulty; name: string; desc: string }[] = [
+  { id: "easy", name: "Lehká", desc: "Všeobecně známé věci" },
+  { id: "hard", name: "Těžká", desc: "Pro znalce a fajnšmekry" },
+  { id: "mix", name: "Mix", desc: "Lehké i těžké otázky" },
+];
+
 // Format: "Otázka|Odpověď|Alternativa|..." — písmeno = první písmeno první odpovědi.
-const RAW: Record<Exclude<CategoryId, "mix">, string[]> = {
+const RAW: Partial<Record<BaseCategory, string[]>> = {
   gaming: [
     "Jak se jmenuje kníratý instalatér, maskot Nintenda?|Mario",
     "Jak se jmenuje Mariův zelený bratr?|Luigi",
@@ -333,13 +349,21 @@ function letterOf(a: string): string {
   return /[0-9]/.test(ch) ? "#" : ch;
 }
 
-export const QUESTIONS: Question[] = (Object.keys(RAW) as (keyof typeof RAW)[]).flatMap((cat) =>
-  RAW[cat].map((line, i) => {
+type BankItem = { c: BaseCategory; d: QDiff; q: string; a: string[] };
+
+const LEGACY: Question[] = (Object.keys(RAW) as BaseCategory[]).flatMap((cat) =>
+  (RAW[cat] ?? []).map((line, i) => {
     const [q, ...answers] = line.split("|");
-    return { id: `${cat}-${i}`, cat, q: q!, answers, letter: letterOf(answers[0]!) };
+    return { id: `${cat}-${i}`, cat, q: q!, answers, letter: letterOf(answers[0]!), diff: "easy" as const };
   }),
 );
 
-export function poolFor(cat: CategoryId): Question[] {
-  return cat === "mix" ? QUESTIONS : QUESTIONS.filter((q) => q.cat === cat);
+const GENERATED: Question[] = BANK.map((b, i) => ({
+  id: `b${i}`, cat: b.c, q: b.q, answers: b.a, letter: letterOf(b.a[0]!), diff: b.d,
+}));
+
+export const QUESTIONS: Question[] = [...LEGACY, ...GENERATED];
+
+export function poolFor(cat: CategoryId, diff: Difficulty = "mix"): Question[] {
+  return QUESTIONS.filter((q) => (cat === "mix" || q.cat === cat) && (diff === "mix" || q.diff === diff));
 }

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import type { Seat } from "@/lib/quiz/board";
 import { ANSWER_SECONDS, STEAL_SECONDS, other, type Action, type GameState } from "@/lib/quiz/engine";
-import { CATEGORIES } from "@/lib/quiz/questions";
+import { CATEGORIES, DIFFICULTIES } from "@/lib/quiz/questions";
+import { SEAT_BORDER, SEAT_LABEL, SEAT_TEXT } from "./seat";
 import { sfx } from "@/lib/quiz/sfx";
 import { cn } from "@/lib/utils";
 import { Board } from "./Board";
@@ -15,18 +16,18 @@ interface Props {
   correctAnswer?: string;
 }
 
-const seatColor = (s: Seat) => (s === "A" ? "text-player-a" : "text-player-b");
+const seatColor = (s: Seat) => SEAT_TEXT[s];
 
 function PlayerCard({ state, seat }: { state: GameState; seat: Seat }) {
   const active = state.phase === "question" ? state.answering === seat : state.turn === seat && state.phase === "pick";
   const owned = state.cells.filter((c) => c === seat).length;
   return (
     <div className={cn(
-      "flex-1 rounded-xl border bg-card/70 p-3 transition-all",
-      active ? (seat === "A" ? "border-player-a glow-a" : "border-player-b glow-b") : "border-border opacity-80",
+      "min-w-0 flex-1 rounded-xl border bg-card/70 p-3 transition-all",
+      active ? SEAT_BORDER[seat] : "border-border opacity-80",
     )}>
       <div className={cn("font-display text-xs uppercase tracking-widest", seatColor(seat))}>
-        {seat === "A" ? "Modrý" : "Oranžový"}
+        {SEAT_LABEL[seat]}
       </div>
       <div className="truncate font-display text-lg font-bold">{state.names[seat]}</div>
       <div className="mt-1 flex gap-3 text-xs text-muted-foreground">
@@ -89,12 +90,11 @@ export function GameScreen({ state, mySeats, dispatch, canRematch }: Props) {
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-4 px-3 py-4 md:py-8">
       <header className="flex items-center justify-between">
         <Link to="/" className="font-display text-xl font-bold tracking-wide">AZ<span className="text-primary">DUEL</span></Link>
-        <span className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">{cat?.icon} {cat?.name}</span>
+        <span className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">{cat?.icon} {cat?.name} · {DIFFICULTIES.find((d) => d.id === state.difficulty)?.name}</span>
       </header>
 
       <div className="flex gap-3">
-        <PlayerCard state={state} seat="A" />
-        <PlayerCard state={state} seat="B" />
+        {state.seats.map((seat) => <PlayerCard key={seat} state={state} seat={seat} />)}
       </div>
 
       <div className="grid gap-5 md:grid-cols-[1fr_1fr] md:items-center">
@@ -105,7 +105,7 @@ export function GameScreen({ state, mySeats, dispatch, canRematch }: Props) {
             <div className="space-y-2 text-center">
               <div className={cn("font-display text-2xl font-bold", seatColor(state.turn))}>{state.names[state.turn]}</div>
               <p className="text-muted-foreground">{mySeats.includes(state.turn) ? "Vyber pole na pyramidě." : "Soupeř vybírá pole…"}</p>
-              <p className="pt-4 text-xs text-muted-foreground">Propoj všechny tři strany trojúhelníku. Černé pole = náhradní otázka.</p>
+              <p className="pt-4 text-xs text-muted-foreground">Propoj všechny tři strany trojúhelníku. Černé pole = náhradní otázka. Odpovídat můžeš česky i slovensky.</p>
             </div>
           )}
 
@@ -114,7 +114,7 @@ export function GameScreen({ state, mySeats, dispatch, canRematch }: Props) {
               <div className="flex items-center gap-4">
                 <div className="hex flex h-16 w-14 shrink-0 items-center justify-center bg-primary font-display text-3xl font-bold text-primary-foreground">{state.question.letter}</div>
                 <div className="text-xs uppercase tracking-widest text-muted-foreground">
-                  Pole {state.cellIdx! + 1} · {state.attempt === "black" ? "Souboj o černé pole" : state.attempt === "steal" ? "Šance pro soupeře" : "Otázka"}
+                  Pole {state.cellIdx! + 1} · {state.attempt === "black" ? "Souboj o černé pole" : state.attempt === "steal" ? "Šance pro soupeře" : "Otázka"}{state.question.diff === "hard" ? " · těžká" : ""}
                   <div className={cn("mt-1 font-display text-base normal-case tracking-normal", seatColor(state.answering))}>Odpovídá {state.names[state.answering]}</div>
                 </div>
               </div>
@@ -139,7 +139,7 @@ export function GameScreen({ state, mySeats, dispatch, canRematch }: Props) {
               <div className={cn("font-display text-3xl font-bold", lr.ok ? "text-success" : "text-destructive")}>{lr.ok ? "Správně!" : "Špatně"}</div>
               <p className="text-muted-foreground">
                 {lr.ok ? `${state.names[lr.by]} získává pole ${state.cellIdx! + 1}.`
-                  : lr.attempt === "black" ? `Pole získává ${state.names[other(lr.by)]}.` : "Pole zčernalo."}
+                  : lr.attempt === "black" && state.players === 2 ? `Pole získává ${state.names[other(lr.by)]}.` : "Pole zůstává černé."}
               </p>
               {state.question && <p className="text-sm">Odpověď: <b className="text-primary">{state.question.answers[0]}</b></p>}
             </div>
@@ -150,12 +150,12 @@ export function GameScreen({ state, mySeats, dispatch, canRematch }: Props) {
               <div className="text-xs uppercase tracking-widest text-muted-foreground">Vítěz</div>
               <div className={cn("font-display text-4xl font-bold", seatColor(state.winner))}>{state.names[state.winner]} 🏆</div>
               <table className="mx-auto w-full max-w-xs text-sm">
-                <thead><tr className="text-muted-foreground"><th /><th className="text-player-a">{state.names.A}</th><th className="text-player-b">{state.names.B}</th></tr></thead>
+                <thead><tr className="text-muted-foreground"><th />{state.seats.map((x) => <th key={x} className={seatColor(x)}>{state.names[x]}</th>)}</tr></thead>
                 <tbody>
-                  <tr><td className="text-left text-muted-foreground">Pole</td><td>{state.cells.filter((c) => c === "A").length}</td><td>{state.cells.filter((c) => c === "B").length}</td></tr>
-                  <tr><td className="text-left text-muted-foreground">Správně</td><td>{state.stats.A.correct}</td><td>{state.stats.B.correct}</td></tr>
-                  <tr><td className="text-left text-muted-foreground">Chybně</td><td>{state.stats.A.wrong}</td><td>{state.stats.B.wrong}</td></tr>
-                  <tr><td className="text-left text-muted-foreground">Nejrychlejší</td><td>{fmt(state.stats.A.fastest)}</td><td>{fmt(state.stats.B.fastest)}</td></tr>
+                  <tr><td className="text-left text-muted-foreground">Pole</td>{state.seats.map((x) => <td key={x}>{state.cells.filter((c) => c === x).length}</td>)}</tr>
+                  <tr><td className="text-left text-muted-foreground">Správně</td>{state.seats.map((x) => <td key={x}>{state.stats[x].correct}</td>)}</tr>
+                  <tr><td className="text-left text-muted-foreground">Chybně</td>{state.seats.map((x) => <td key={x}>{state.stats[x].wrong}</td>)}</tr>
+                  <tr><td className="text-left text-muted-foreground">Nejrychlejší</td>{state.seats.map((x) => <td key={x}>{fmt(state.stats[x].fastest)}</td>)}</tr>
                 </tbody>
               </table>
               <p className="text-xs text-muted-foreground">{state.rounds} kol · černých polí {state.cells.filter((c) => c === "X").length}</p>
