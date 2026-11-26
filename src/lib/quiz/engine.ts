@@ -68,18 +68,46 @@ export function createGame(category: CategoryId, names: Partial<Record<Seat, str
   };
 }
 
+function questionKey(q: Question): string {
+  const normalized = q.q
+    .normalize("NFD")
+    .replace(/[\\u0300-\\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+  return "question:" + normalized;
+}
+
 function draw(state: GameState): { q: Question; used: string[] } {
   const selected = poolFor(state.category, state.difficulty);
-  const relaxed = selected.length ? selected : poolFor(state.category, "mix");
-  const global = relaxed.length ? relaxed : poolFor("mix", "mix");
-  const pool = global.length ? global : poolFor("gaming", "mix");
+  const sameCategory = poolFor(state.category, "mix");
+  const everything = poolFor("mix", "mix");
+  const fallback = everything.length ? everything : poolFor("gaming", "mix");
   const usedSet = new Set(state.used);
-  let avail = pool.filter((q) => !usedSet.has(q.id));
+
+  // Preserve the chosen category and difficulty while they still have unused
+  // questions. When that smaller pool runs out, continue with the rest of the
+  // category, then the whole bank instead of restarting a depleted pool.
+  const pools = [selected, sameCategory, fallback];
+  let available: Question[] = [];
+  for (const pool of pools) {
+    const next = pool.filter((q) => !usedSet.has(q.id) && !usedSet.has(questionKey(q)));
+    if (next.length > 0) {
+      available = next;
+      break;
+    }
+  }
+
+  // A complete bank cycle is the only situation in which reuse is unavoidable.
   let used = state.used;
-  if (avail.length === 0) { avail = pool; used = []; }
-  const q = avail[Math.floor(Math.random() * avail.length)];
+  if (available.length === 0) {
+    available = fallback;
+    used = [];
+  }
+
+  const q = available[Math.floor(Math.random() * available.length)];
   if (!q) throw new Error("Databáze otázek je prázdná.");
-  return { q, used: [...used, q.id] };
+  return { q, used: [...used, q.id, questionKey(q)] };
 }
 
 export function reduce(s: GameState, a: Action, now = Date.now()): GameState {
