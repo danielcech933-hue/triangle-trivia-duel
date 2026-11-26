@@ -48,17 +48,49 @@ describe("two-player rules", () => {
 });
 
 describe("three-player rules", () => {
-  it("creates a 55-cell board and offers every wrong answer to the next player", () => {
+  it("lets only the selected player answer and advances to a new cell after a miss", () => {
     let s = createGame("mix", { A: "A", B: "B", C: "C" }, false, { players: 3, difficulty: "mix" });
     expect(s.cells).toHaveLength(55);
     s = reduce(s, { type: "PICK", seat: "A", index: 0 });
+
+    const rejectedOtherPlayerAnswer = reduce(s, { type: "ANSWER", seat: "B", text: "wrong" });
+    expect(rejectedOtherPlayerAnswer).toBe(s);
+
     s = reduce(s, { type: "ANSWER", seat: "A", text: "definitely wrong" });
-    expect(s.answering).toBe("B");
-    s = reduce(s, { type: "ANSWER", seat: "B", text: "definitely wrong" });
-    expect(s.answering).toBe("C");
-    s = reduce(s, { type: "ANSWER", seat: "C", text: "definitely wrong" });
-    expect(s.cells[0]).toBe("X");
     expect(s.phase).toBe("result");
+    expect(s.cells[0]).toBe("X");
+    expect(s.answering).toBe("A");
+
+    s = reduce(s, { type: "NEXT" });
+    expect(s.phase).toBe("pick");
+    expect(s.turn).toBe("B");
+
+    s = reduce(s, { type: "PICK", seat: "B", index: 1 });
+    expect(s.phase).toBe("question");
+    expect(s.answering).toBe("B");
+    expect(s.cellIdx).toBe(1);
+  });
+
+  it("keeps a black cell black after one failed answer in a three-player game", () => {
+    let s = createGame("mix", { A: "A", B: "B", C: "C" }, false, { players: 3 });
+    s = { ...s, cells: s.cells.map((cell, i) => (i === 4 ? "X" : cell)) };
+    s = reduce(s, { type: "PICK", seat: "A", index: 4 });
+    s = reduce(s, { type: "ANSWER", seat: "A", text: "wrong" });
+    expect(s.phase).toBe("result");
+    expect(s.cells[4]).toBe("X");
+    s = reduce(s, { type: "NEXT" });
+    expect(s.turn).toBe("B");
+  });
+
+  it("advances after a timeout in a three-player game without offering the same question to another player", () => {
+    let s = createGame("mix", { A: "A", B: "B", C: "C" }, false, { players: 3 });
+    s = reduce(s, { type: "PICK", seat: "A", index: 0 }, 1000);
+    s = reduce(s, { type: "TIMEOUT" }, s.deadline + 1);
+    expect(s.phase).toBe("result");
+    expect(s.cells[0]).toBe("X");
+    s = reduce(s, { type: "NEXT" });
+    expect(s.phase).toBe("pick");
+    expect(s.turn).toBe("B");
   });
   it("has category-specific questions for both difficulties in every added category", () => {
     for (const category of ["hudba", "historie", "veda", "literatura", "jidlo", "burza"] as const) {
@@ -90,8 +122,8 @@ describe("three-player rules", () => {
         .trim();
       asked.push(prompt);
 
-      // Let all three players miss; this resolves the cell as black without
-      // creating a winning path, so the whole 55-cell board can be exercised.
+      // Only the player whose turn it is answers in three-player games.
+      // A miss closes the cell as black, then NEXT passes the turn.
       while (s.phase === "question") {
         s = reduce(s, { type: "ANSWER", seat: s.answering, text: "__definitely_wrong__" });
       }
