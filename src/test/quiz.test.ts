@@ -61,7 +61,7 @@ describe("three-player rules", () => {
     expect(s.phase).toBe("result");
   });
   it("has category-specific questions for both difficulties in every added category", () => {
-    for (const category of ["hudba", "historie", "veda", "literatura", "jidlo"] as const) {
+    for (const category of ["hudba", "historie", "veda", "literatura", "jidlo", "burza"] as const) {
       expect(poolFor(category, "easy").length).toBeGreaterThan(0);
       expect(poolFor(category, "hard").length).toBeGreaterThan(0);
     }
@@ -100,6 +100,38 @@ describe("three-player rules", () => {
     }
 
     expect(new Set(asked).size).toBe(55);
+  });
+
+
+  it("has at least 55 unique hard burza questions for a full three-player game", () => {
+    const pool = poolFor("burza", "hard");
+    expect(pool.length).toBeGreaterThanOrEqual(55);
+    expect(new Set(pool.map((q) => q.q)).size).toBe(pool.length);
+
+    let s = createGame("burza", { A: "A", B: "B", C: "C" }, false, {
+      players: 3,
+      difficulty: "hard",
+    });
+    const asked = new Set<string>();
+    for (let i = 0; i < 55; i++) {
+      s = reduce(s, { type: "PICK", seat: s.turn, index: i });
+      expect(s.phase).toBe("question");
+      expect(s.question).not.toBeNull();
+      const prompt = s.question!.q
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+      expect(asked.has(prompt)).toBe(false);
+      asked.add(prompt);
+      while (s.phase === "question") {
+        s = reduce(s, { type: "ANSWER", seat: s.answering, text: "__definitely_wrong__" });
+      }
+      expect(s.phase).toBe("result");
+      s = reduce(s, { type: "NEXT" });
+    }
+    expect(asked.size).toBe(55);
   });
 
   it("keeps the player count and difficulty after a rematch", () => {
