@@ -150,14 +150,21 @@ export function reduce(s: GameState, a: Action, now = Date.now()): GameState {
       const lastResult = { ok, by, text, attempt: s.attempt, timeout: a.type === "TIMEOUT" };
       const cells = [...s.cells];
       if (!ok) {
-        const tried = [...s.tried, by];
-        if (s.attempt === "black" && s.players === 2) {
-          cells[s.cellIdx] = other(by);
-        } else {
-          if (s.seats.some((x) => !tried.includes(x))) {
-            return n({ stats, lastResult, tried, attempt: s.attempt === "black" ? "black" : "steal", answering: orderedNext(s, tried), deadline: now + STEAL_SECONDS * 1000 });
-          }
+        if (s.players === 3) {
+          // Three-player games are strictly turn-based: only the player who
+          // picked this cell answers. A miss or timeout closes it as black;
+          // NEXT then gives the next player a fresh pick.
           cells[s.cellIdx] = "X";
+        } else {
+          const tried = [...s.tried, by];
+          if (s.attempt === "black") {
+            cells[s.cellIdx] = other(by);
+          } else {
+            if (s.seats.some((x) => !tried.includes(x))) {
+              return n({ stats, lastResult, tried, attempt: "steal", answering: orderedNext(s, tried), deadline: now + STEAL_SECONDS * 1000 });
+            }
+            cells[s.cellIdx] = "X";
+          }
         }
       } else cells[s.cellIdx] = by;
       let winner: Seat | null = null;
