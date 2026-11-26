@@ -9,7 +9,7 @@ export const RESULT_MS = 3000;
 export type Attempt = "first" | "steal" | "black";
 export type Phase = "lobby" | "pick" | "question" | "result" | "over";
 
-export interface PublicQuestion { id: string; q: string; letter: string; answers: string[]; diff: QDiff }
+export interface PublicQuestion { id: string; cat: Question["cat"]; q: string; letter: string; answers: string[]; diff: QDiff }
 export interface SeatStats { correct: number; wrong: number; fastest: number | null }
 
 export interface GameState {
@@ -100,7 +100,7 @@ export function reduce(s: GameState, a: Action, now = Date.now()): GameState {
       const { q, used } = draw(s);
       return n({
         phase: "question", cellIdx: a.index, used,
-        question: { id: q.id, q: q.q, letter: q.letter, answers: q.answers, diff: q.diff },
+        question: { id: q.id, cat: q.cat, q: q.q, letter: q.letter, answers: q.answers, diff: q.diff },
         answering: s.turn, attempt: c === "X" ? "black" : "first", tried: [],
         deadline: now + ANSWER_SECONDS * 1000, askedAt: now, lastResult: null,
       });
