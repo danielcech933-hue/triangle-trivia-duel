@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { findWin, idx, type Cell } from "@/lib/quiz/board";
 import { createGame, reduce } from "@/lib/quiz/engine";
+import { poolFor } from "@/lib/quiz/questions";
 import { isCorrect } from "@/lib/quiz/validate";
 
 describe("answer validation", () => {
@@ -59,11 +60,15 @@ describe("three-player rules", () => {
     expect(s.cells[0]).toBe("X");
     expect(s.phase).toBe("result");
   });
-  it("falls back to available questions for a category with an empty bank", () => {
+  it("has category-specific questions for both difficulties in every added category", () => {
+    for (const category of ["hudba", "historie", "veda", "literatura", "jidlo"] as const) {
+      expect(poolFor(category, "easy").length).toBeGreaterThan(0);
+      expect(poolFor(category, "hard").length).toBeGreaterThan(0);
+    }
     let s = createGame("hudba", { A: "A", B: "B" }, false, { players: 2, difficulty: "hard" });
     s = reduce(s, { type: "PICK", seat: "A", index: 0 });
     expect(s.phase).toBe("question");
-    expect(s.question?.q.length).toBeGreaterThan(0);
+    expect(s.question?.diff).toBe("hard");
   });
   it("keeps the player count and difficulty after a rematch", () => {
     const s = createGame("mix", { A: "A", B: "B", C: "C" }, false, { players: 3, difficulty: "hard" });
