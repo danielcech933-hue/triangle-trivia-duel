@@ -115,7 +115,7 @@ export function GameScreen({ state, mySeats, dispatch, canRematch }: Props) {
               <div className="flex items-center gap-4">
                 <div className="hex flex h-16 w-14 shrink-0 items-center justify-center bg-primary font-display text-3xl font-bold text-primary-foreground">{state.question.letter}</div>
                 <div className="text-xs uppercase tracking-widest text-muted-foreground">
-                  Pole {state.cellIdx! + 1} · {state.attempt === "black" ? "Souboj o černé pole" : state.attempt === "steal" ? "Šance pro soupeře" : "Otázka"}{questionCategory ? " · " + questionCategory.name : ""}{state.question.diff === "hard" ? " · těžká" : " · lehká"}
+                  Pole {state.cellIdx! + 1} · {state.players === 3 ? (state.attempt === "black" ? "Náhradní otázka" : "Otázka pro hráče na tahu") : state.attempt === "black" ? "Souboj o černé pole" : state.attempt === "steal" ? "Šance pro soupeře" : "Otázka"}{questionCategory ? " · " + questionCategory.name : ""}{state.question.diff === "hard" ? " · těžká" : " · lehká"}
                   <div className={cn("mt-1 font-display text-base normal-case tracking-normal", seatColor(state.answering))}>Odpovídá {state.names[state.answering]}</div>
                 </div>
               </div>
@@ -140,7 +140,7 @@ export function GameScreen({ state, mySeats, dispatch, canRematch }: Props) {
               <div className={cn("font-display text-3xl font-bold", lr.ok ? "text-success" : "text-destructive")}>{lr.ok ? "Správně!" : "Špatně"}</div>
               <p className="text-muted-foreground">
                 {lr.ok ? `${state.names[lr.by]} získává pole ${state.cellIdx! + 1}.`
-                  : lr.attempt === "black" && state.players === 2 ? `Pole získává ${state.names[other(lr.by)]}.` : "Pole zůstává černé."}
+                  : state.players === 3 ? "Pole zůstává černé. Tah přechází na dalšího hráče." : lr.attempt === "black" ? `Pole získává ${state.names[other(lr.by)]}.` : "Pole zůstává černé."}
               </p>
               {state.question && <p className="text-sm">Odpověď: <b className="text-primary">{state.question.answers[0]}</b></p>}
             </div>
