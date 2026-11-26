@@ -70,6 +70,38 @@ describe("three-player rules", () => {
     expect(s.phase).toBe("question");
     expect(s.question?.diff).toBe("hard");
   });
+
+  it("does not repeat questions during a full 55-cell three-player game when a hard category pool runs out", () => {
+    let s = createGame("historie", { A: "A", B: "B", C: "C" }, false, {
+      players: 3,
+      difficulty: "hard",
+    });
+    const asked: string[] = [];
+
+    for (let i = 0; i < 55; i++) {
+      s = reduce(s, { type: "PICK", seat: s.turn, index: i });
+      expect(s.phase).toBe("question");
+      expect(s.question).not.toBeNull();
+      const prompt = s.question!.q
+        .normalize("NFD")
+        .replace(/[\\u0300-\\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, " ")
+        .trim();
+      asked.push(prompt);
+
+      // Let all three players miss; this resolves the cell as black without
+      // creating a winning path, so the whole 55-cell board can be exercised.
+      while (s.phase === "question") {
+        s = reduce(s, { type: "ANSWER", seat: s.answering, text: "__definitely_wrong__" });
+      }
+      expect(s.phase).toBe("result");
+      s = reduce(s, { type: "NEXT" });
+    }
+
+    expect(new Set(asked).size).toBe(55);
+  });
+
   it("keeps the player count and difficulty after a rematch", () => {
     const s = createGame("mix", { A: "A", B: "B", C: "C" }, false, { players: 3, difficulty: "hard" });
     const next = reduce({ ...s, phase: "over", winner: "B" }, { type: "RESET" });
