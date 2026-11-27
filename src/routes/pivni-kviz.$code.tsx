@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { beerRpc, createBeerRoom, getBeerRoom, joinBeerRoom, readBeerCredentials, type BeerCredentials } from "@/lib/quiz/beer-api";
 import { chooseBeerWord, type BeerRoomSnapshot } from "@/lib/quiz/beer";
 
