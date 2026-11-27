@@ -72,7 +72,7 @@ function Index() {
 
       <h2 className="mt-10 font-display text-sm uppercase tracking-widest text-muted-foreground">4 · Herní mód</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-3">
-        <Link to="/online" search={{ cat, players, difficulty }} className="rounded-xl border border-player-a/60 bg-card/70 p-5 hover:glow-a">
+        <Link to="/pivni-kviz" className="rounded-xl border border-amber-500/60 bg-card/70 p-5 hover:brightness-110">\n          <div className="font-display text-xl font-bold text-amber-500">🍺 Pivní kvíz</div>\n          <div className="text-sm text-muted-foreground">Hospodsý režim pro partu. Jeden popisuje tajné slovo, ostatní hádají a sbírají body.</div>\n        </Link>\n        <Link to="/online" search={{ cat, players, difficulty }} className="rounded-xl border border-player-a/60 bg-card/70 p-5 hover:glow-a">
           <div className="font-display text-xl font-bold text-player-a">Online místnost</div>
           <div className="text-sm text-muted-foreground">Hrajte přes kód nebo odkaz. Online funguje pro 2 i 3 hráče.</div>
         </Link>
