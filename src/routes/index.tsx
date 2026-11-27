@@ -72,10 +72,20 @@ function Index() {
 
       <h2 className="mt-10 font-display text-sm uppercase tracking-widest text-muted-foreground">4 · Herní mód</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-3">
-        <Link to="/pivni-kviz" className="rounded-xl border border-amber-500/60 bg-card/70 p-5 hover:brightness-110">
+        <button
+          type="button"
+          onClick={() => {
+            const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+            const room = Array.from({ length: 5 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
+            const hostId = crypto.randomUUID();
+            if (!localStorage.getItem("az:name")) localStorage.setItem("az:name", "Chmelák");
+            window.location.assign("/pivni-kviz/" + room + "?host=" + encodeURIComponent(hostId));
+          }}
+          className="rounded-xl border border-amber-500/60 bg-card/70 p-5 text-left hover:brightness-110"
+        >
           <div className="font-display text-xl font-bold text-amber-500">🍺 Pivní kvíz</div>
-          <div className="text-sm text-muted-foreground">Hospodsý režim pro partu. Jeden popisuje tajné slovo, ostatní hádají a sbírají body.</div>
-        </Link>
+          <div className="text-sm text-muted-foreground">Kliknutím založíš vlastní místnost. Pošli odkaz kamarádům a hrajte spolu.</div>
+        </button>
         <Link to="/online" search={{ cat, players, difficulty }} className="rounded-xl border border-player-a/60 bg-card/70 p-5 hover:glow-a">
           <div className="font-display text-xl font-bold text-player-a">Online místnost</div>
           <div className="text-sm text-muted-foreground">Hrajte přes kód nebo odkaz. Online funguje pro 2 i 3 hráče.</div>
