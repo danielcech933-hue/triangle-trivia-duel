@@ -69,7 +69,6 @@ function BeerRoom() {
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState(false);
   const [guess, setGuess] = useState("");
-  const [revealed, setRevealed] = useState(false);
   const channel = useRef<RealtimeChannel | null>(null);
   const stateRef = useRef<BeerState | null>(null);
   const myId = useRef("");
@@ -119,7 +118,13 @@ function BeerRoom() {
       }
     });
     ch.on("broadcast", { event: "state" }, ({ payload }) => {
-      if (!isCreator) setState(payload as BeerState);
+      const incoming = payload as BeerState;
+      if (!isCreator) {
+        setState((previous) => {
+          if (previous && incoming.seq < previous.seq) return previous;
+          return incoming;
+        });
+      }
     });
     ch.on("broadcast", { event: "hello" }, () => {
       if (isCreator && stateRef.current) {
@@ -130,9 +135,10 @@ function BeerRoom() {
     ch.on("broadcast", { event: "action" }, ({ payload }) => {
       if (!isCreator) return;
       const data = payload as { from: string; action: BeerAction };
-      const allowed = stateRef.current?.players.some((p) => p.id === data.from);
-      if (!allowed) return;
-      if (data.action.type === "GUESS") hostDispatch({ ...data.action, playerId: data.from });
+      const current = stateRef.current;
+      const allowed = current?.players.some((p) => p.id === data.from);
+      if (!allowed || !current) return;
+      if (data.action.type === "GUESS") hostDispatch({ type: "GUESS", playerId: data.from, text: String(data.action.text).slice(0, 80) });
     });
     ch.subscribe(async (status) => {
       if (status !== "SUBSCRIBED") return;
@@ -149,10 +155,8 @@ function BeerRoom() {
   };
 
   const current = state;
-  const mePlayer = current?.players.find((p) => p.id === me);
   const describer = current?.players.find((p) => p.id === current?.describer);
   const isDescriber = current?.describer === me;
-  const isGuesser = !!current && current.phase === "guess" && !isDescriber;
 
   if (!ready || !current) return <main className="mx-auto max-w-md px-4 py-16 text-center text-muted-foreground">Připojuji se k hospodskému stolu…</main>;
 
