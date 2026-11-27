@@ -1,0 +1,1 @@
+export { BeerRoomRoute as Route } from "./pivni-kviz";
