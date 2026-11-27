@@ -12,44 +12,22 @@ export const Route = createFileRoute("/pivni-kviz")({
 
 function BeerLobby() {
   const navigate = useNavigate();
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
-  useEffect(() => setName(localStorage.getItem("az:name") ?? ""), []);
+  const created = useRef(false);
 
-  const create = () => {
-    const id = crypto.randomUUID();
+  useEffect(() => {
+    if (created.current) return;
+    created.current = true;
     const room = Array.from({ length: 5 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
-    localStorage.setItem("az:name", name.trim() || "Chmelák");
-    sessionStorage.setItem("beer:host:" + room, id);
-    navigate({ to: "/pivni-kviz/$code", params: { code: room } });
-  };
-  const join = () => {
-    const value = code.trim().toUpperCase();
-    if (value.length === 5) {
-      localStorage.setItem("az:name", name.trim() || "Hráč");
-      navigate({ to: "/pivni-kviz/$code", params: { code: value } });
-    }
-  };
+    const hostId = crypto.randomUUID();
+    if (!localStorage.getItem("az:name")) localStorage.setItem("az:name", "Chmelák");
+    sessionStorage.setItem("beer:host:" + room, hostId);
+    navigate({ to: "/pivni-kviz/$code", params: { code: room }, replace: true });
+  }, [navigate]);
 
-  return <main className="mx-auto max-w-xl space-y-6 px-4 py-12">
-    <Link to="/" className="text-sm text-muted-foreground">← Zpět do AZ Duelu</Link>
-    <div className="rounded-3xl border border-amber-500/30 bg-gradient-to-br from-amber-500/15 via-card to-card p-7">
-      <div className="text-5xl">🍺</div>
-      <h1 className="mt-3 font-display text-4xl font-black">PIVNÍ KVÍZ</h1>
-      <p className="mt-2 text-muted-foreground">Vysvětli slovo vlastními slovy. Ostatní hádají. Kdo uhodne, bere bod!</p>
-    </div>
-    <label className="block text-sm text-muted-foreground">Tvoje přezdívka
-      <input value={name} onChange={(e) => setName(e.target.value)} maxLength={16} placeholder="Např. Chmelák" className="mt-1 w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground" />
-    </label>
-    <button onClick={create} disabled={!name.trim()} className="w-full rounded-xl bg-amber-500 px-4 py-4 font-display text-lg font-bold text-black disabled:opacity-40">🍻 Vytvořit novou hospodskou místnost</button>
-    <div className="rounded-2xl border border-border bg-card p-4">
-      <h2 className="font-display text-lg font-bold">Připojit se ke kamarádům</h2>
-      <div className="mt-3 flex gap-2">
-        <input value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={5} placeholder="KÓD MÍSTNOSTI" className="min-w-0 flex-1 rounded-xl border border-input bg-background px-3 py-3 font-display tracking-widest" />
-        <button onClick={join} disabled={code.trim().length !== 5} className="rounded-xl bg-primary px-5 font-bold text-primary-foreground disabled:opacity-40">Připojit</button>
-      </div>
-    </div>
-    <p className="text-xs text-muted-foreground">Slova pocházejí z databáze AZ kvízu ({CATEGORIES.length} tematických kategorií). Aplikace nevyžaduje instalaci.</p>
+  return <main className="mx-auto max-w-md space-y-4 px-4 py-16 text-center">
+    <div className="text-5xl">🍺</div>
+    <h1 className="font-display text-2xl font-black">Zakládám Pivní kvíz…</h1>
+    <p className="text-muted-foreground">Připravuji soukromou místnost a odkaz pro tvoje kamarády.</p>
   </main>;
 }
 
@@ -89,8 +67,8 @@ function BeerRoom() {
   useEffect(() => {
     const hostId = sessionStorage.getItem("beer:host:" + code);
     const isCreator = !!hostId;
-    const id = sessionStorage.getItem("beer:client") ?? crypto.randomUUID();
-    sessionStorage.setItem("beer:client", id);
+    const id = hostId || sessionStorage.getItem("beer:client") || crypto.randomUUID();
+    if (!hostId) sessionStorage.setItem("beer:client", id);
     myId.current = id;
     setMe(id);
     setHost(isCreator);
@@ -113,6 +91,7 @@ function BeerRoom() {
         if (hostPresence?.gameState) {
           setState((previous) => !previous || hostPresence.gameState!.seq >= previous.seq ? hostPresence.gameState! : previous);
         }
+        if (!hostPresence) ch.send({ type: "broadcast", event: "hello", payload: {} });
       }
       if (isCreator && stateRef.current?.phase === "lobby") {
         const players: BeerPlayer[] = list.sort((a, b) => a.at - b.at).map((p) => ({ id: p.id, name: p.name, score: 0 }));
