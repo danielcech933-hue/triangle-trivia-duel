@@ -20,6 +20,7 @@ function BeerLobby() {
     const hostId = crypto.randomUUID();
     if (!localStorage.getItem("az:name")) localStorage.setItem("az:name", "Chmelák");
     sessionStorage.setItem("beer:host:" + room, hostId);
+    localStorage.setItem("beer:host:" + room, hostId);
     navigate({ to: "/pivni-kviz/$code", params: { code: room }, replace: true });
   }, [navigate]);
 
@@ -60,11 +61,11 @@ function BeerRoom() {
     setState(next);
     const publicState = beerPublicState(next);
     channel.current?.send({ type: "broadcast", event: "state", payload: publicState });
-    channel.current?.track({ name: localStorage.getItem("az:name") || "Hostitel", at: Date.now(), role: "host", gameState: publicState });
+    channel.current?.track({ name: localStorage.getItem("az:name") || "Hostitel", at: Date.now(), role: "host" });
   }, []);
 
   useEffect(() => {
-    const hostId = sessionStorage.getItem("beer:host:" + code);
+    const hostId = sessionStorage.getItem("beer:host:" + code) || localStorage.getItem("beer:host:" + code);
     const isCreator = !!hostId;
     const id = hostId || sessionStorage.getItem("beer:client") || crypto.randomUUID();
     if (!hostId) sessionStorage.setItem("beer:client", id);
@@ -82,15 +83,13 @@ function BeerRoom() {
     channel.current = ch;
 
     ch.on("presence", { event: "sync" }, () => {
-      const presence = ch.presenceState<{ name: string; at: number; role?: "host" | "guest"; gameState?: BeerState | null }>();
+      const presence = ch.presenceState<{ name: string; at: number; role: "host" | "guest" }>();
       const list = Object.entries(presence).flatMap(([peerId, entries]) => entries[0] ? [{ id: peerId, ...entries[0] }] : []);
       setPeers(list);
       if (!isCreator) {
-        const hostPresence = list.find((peer) => peer.role === "host" && peer.gameState);
-        if (hostPresence?.gameState) {
-          setState((previous) => !previous || hostPresence.gameState!.seq >= previous.seq ? hostPresence.gameState! : previous);
-        }
+        const hostPresence = list.some((peer) => peer.role === "host");
         if (!hostPresence) ch.send({ type: "broadcast", event: "hello", payload: {} });
+        else ch.send({ type: "broadcast", event: "hello", payload: {} });
       }
       if (isCreator && stateRef.current?.phase === "lobby") {
         const players: BeerPlayer[] = list.sort((a, b) => a.at - b.at).map((p) => ({ id: p.id, name: p.name, score: 0 }));
@@ -102,7 +101,7 @@ function BeerRoom() {
           setState(synced);
           const publicState = beerPublicState(synced);
           ch.send({ type: "broadcast", event: "state", payload: publicState });
-          ch.track({ name: playerName, at: Date.now(), role: "host", gameState: publicState });
+          ch.track({ name: playerName, at: Date.now(), role: "host" });
         }
       }
     });
@@ -132,10 +131,7 @@ function BeerRoom() {
     ch.subscribe(async (status, err) => {
       if (status === "SUBSCRIBED") {
         setConnectionError("");
-        await ch.track({
-          name: playerName, at: Date.now(), role: isCreator ? "host" : "guest",
-          gameState: isCreator && stateRef.current ? beerPublicState(stateRef.current) : null,
-        });
+        await ch.track({ name: playerName, at: Date.now(), role: isCreator ? "host" : "guest" });
         if (isCreator && stateRef.current) {
           ch.send({ type: "broadcast", event: "state", payload: beerPublicState(stateRef.current) });
         } else {
