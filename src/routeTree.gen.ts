@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as HraRouteImport } from './routes/hra'
 import { Route as OnlineIndexRouteImport } from './routes/online.index'
 import { Route as OnlineCodeRouteImport } from './routes/online.$code'
+import { Route as BeerIndexRouteImport } from './routes/pivni-kviz'
+import { Route as BeerCodeRouteImport } from './routes/pivni-kviz.$code'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -34,18 +36,32 @@ const OnlineCodeRoute = OnlineCodeRouteImport.update({
   path: '/online/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BeerIndexRoute = BeerIndexRouteImport.update({
+  id: '/pivni-kviz',
+  path: '/pivni-kviz',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BeerCodeRoute = BeerCodeRouteImport.update({
+  id: '/pivni-kviz/$code',
+  path: '/pivni-kviz/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/hra': typeof HraRoute
   '/online/$code': typeof OnlineCodeRoute
   '/online/': typeof OnlineIndexRoute
+  '/pivni-kviz': typeof BeerIndexRoute
+  '/pivni-kviz/$code': typeof BeerCodeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/hra': typeof HraRoute
   '/online/$code': typeof OnlineCodeRoute
   '/online': typeof OnlineIndexRoute
+  '/pivni-kviz': typeof BeerIndexRoute
+  '/pivni-kviz/$code': typeof BeerCodeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +69,15 @@ export interface FileRoutesById {
   '/hra': typeof HraRoute
   '/online/$code': typeof OnlineCodeRoute
   '/online/': typeof OnlineIndexRoute
+  '/pivni-kviz': typeof BeerIndexRoute
+  '/pivni-kviz/$code': typeof BeerCodeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/hra' | '/online/$code' | '/online/'
+  fullPaths: '/' | '/hra' | '/online/$code' | '/online/' | '/pivni-kviz' | '/pivni-kviz/$code'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/hra' | '/online/$code' | '/online'
-  id: '__root__' | '/' | '/hra' | '/online/$code' | '/online/'
+  to: '/' | '/hra' | '/online/$code' | '/online' | '/pivni-kviz' | '/pivni-kviz/$code'
+  id: '__root__' | '/' | '/hra' | '/online/$code' | '/online/' | '/pivni-kviz' | '/pivni-kviz/$code'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,6 +85,8 @@ export interface RootRouteChildren {
   HraRoute: typeof HraRoute
   OnlineCodeRoute: typeof OnlineCodeRoute
   OnlineIndexRoute: typeof OnlineIndexRoute
+  BeerIndexRoute: typeof BeerIndexRoute
+  BeerCodeRoute: typeof BeerCodeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,6 +119,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnlineCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pivni-kviz': {
+      id: '/pivni-kviz'
+      path: '/pivni-kviz'
+      fullPath: '/pivni-kviz'
+      preLoaderRoute: typeof BeerIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pivni-kviz/$code': {
+      id: '/pivni-kviz/$code'
+      path: '/pivni-kviz/$code'
+      fullPath: '/pivni-kviz/$code'
+      preLoaderRoute: typeof BeerCodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -107,6 +141,8 @@ const rootRouteChildren: RootRouteChildren = {
   HraRoute: HraRoute,
   OnlineCodeRoute: OnlineCodeRoute,
   OnlineIndexRoute: OnlineIndexRoute,
+  BeerIndexRoute: BeerIndexRoute,
+  BeerCodeRoute: BeerCodeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
