@@ -67,6 +67,7 @@ function BeerRoom() {
   const [state, setState] = useState<BeerState | null>(null);
   const [peers, setPeers] = useState<Peer[]>([]);
   const [ready, setReady] = useState(false);
+  const [connectionError, setConnectionError] = useState("");
   const [copied, setCopied] = useState(false);
   const [guess, setGuess] = useState("");
   const channel = useRef<RealtimeChannel | null>(null);
@@ -140,11 +141,23 @@ function BeerRoom() {
       if (!allowed || !current) return;
       if (data.action.type === "GUESS") hostDispatch({ type: "GUESS", playerId: data.from, text: String(data.action.text).slice(0, 80) });
     });
-    ch.subscribe(async (status) => {
-      if (status !== "SUBSCRIBED") return;
-      await ch.track({ name: playerName, at: Date.now() });
-      if (!isCreator) ch.send({ type: "broadcast", event: "hello", payload: {} });
-      setReady(true);
+    ch.subscribe(async (status, err) => {
+      if (status === "SUBSCRIBED") {
+        setConnectionError("");
+        await ch.track({ name: playerName, at: Date.now() });
+        if (isCreator && stateRef.current) {
+          ch.send({ type: "broadcast", event: "state", payload: beerPublicState(stateRef.current) });
+        } else {
+          ch.send({ type: "broadcast", event: "hello", payload: {} });
+        }
+        setReady(true);
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+        setReady(false);
+        setConnectionError(status === "TIMED_OUT"
+          ? "Připojení k Supabase vypršelo. Zkontroluj internet a zkus to znovu."
+          : "Nepodařilo se připojit k místnosti. Může být chybný kód nebo problém s online službou.");
+        console.error("[Pivní kvíz] Realtime connection:", status, err);
+      }
     });
     return () => { supabase.removeChannel(ch); channel.current = null; };
   }, [code, hostDispatch]);
@@ -158,7 +171,20 @@ function BeerRoom() {
   const describer = current?.players.find((p) => p.id === current?.describer);
   const isDescriber = current?.describer === me;
 
-  if (!ready || !current) return <main className="mx-auto max-w-md px-4 py-16 text-center text-muted-foreground">Připojuji se k hospodskému stolu…</main>;
+  if (!ready) return <main className="mx-auto max-w-md space-y-4 px-4 py-16 text-center">
+    <div className="text-4xl">🍺</div>
+    <h1 className="font-display text-2xl font-bold">Připojování k hospodskému stolu</h1>
+    <p className="text-muted-foreground">{connectionError || "Navazuji spojení s online místností…"}</p>
+    {connectionError && <button onClick={() => window.location.reload()} className="rounded-xl bg-amber-500 px-5 py-3 font-bold text-black">Zkusit znovu</button>}
+    <Link to="/pivni-kviz" className="block text-sm text-muted-foreground underline">Zpět na Pivní kvíz</Link>
+  </main>;
+  if (!current) return <main className="mx-auto max-w-md space-y-4 px-4 py-16 text-center">
+    <div className="text-4xl">🍺</div>
+    <h1 className="font-display text-2xl font-bold">Čekáme na hostitele</h1>
+    <p className="text-muted-foreground">Místnost {code} zatím nemá aktivního hostitele. Požádej kamaráda, který ji založil, aby ji otevřel.</p>
+    <button onClick={() => channel.current?.send({ type: "broadcast", event: "hello", payload: {} })} className="rounded-xl bg-amber-500 px-5 py-3 font-bold text-black">Obnovit spojení</button>
+    <Link to="/pivni-kviz" className="block text-sm text-muted-foreground underline">Zpět na Pivní kvíz</Link>
+  </main>;
 
   if (current.phase === "lobby") return <main className="mx-auto max-w-xl space-y-5 px-4 py-10">
     <div className="flex items-center justify-between"><Link to="/pivni-kviz" className="font-display font-bold">🍺 PIVNÍ KVÍZ</Link><span className="text-xs text-muted-foreground">Místnost {code}</span></div>
