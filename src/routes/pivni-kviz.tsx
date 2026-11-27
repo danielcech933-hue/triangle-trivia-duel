@@ -171,7 +171,7 @@ function BeerRoom() {
     <h1 className="font-display text-2xl font-bold">Čekáme na hostitele</h1>
     <p className="text-muted-foreground">Místnost {code} zatím nemá aktivního hostitele. Požádej kamaráda, který ji založil, aby ji otevřel.</p>
     <button onClick={() => channel.current?.send({ type: "broadcast", event: "hello", payload: {} })} className="rounded-xl bg-amber-500 px-5 py-3 font-bold text-black">Obnovit spojení</button>
-    <Link to="/pivni-kviz" className="block text-sm text-muted-foreground underline">Zpět na Pivní kvíz</Link>
+    <Link to="/" className="block text-sm text-muted-foreground underline">Zpět na hlavní lobby</Link>
   </main>;
 
   if (current.phase === "lobby") return <main className="mx-auto max-w-xl space-y-5 px-4 py-10">
