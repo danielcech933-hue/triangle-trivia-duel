@@ -3,7 +3,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { beerPublicState, createBeerGame, reduceBeer, type BeerAction, type BeerPlayer, type BeerState } from "@/lib/quiz/beer";
-import { CATEGORIES } from "@/lib/quiz/questions";
 
 export const Route = createFileRoute("/pivni-kviz")({
   head: () => ({ meta: [{ title: "Pivní kvíz — AZ Duel" }, { name: "description", content: "Popisuj tajná slova z AZ kvízu a hádejte s kamarády." }] }),
