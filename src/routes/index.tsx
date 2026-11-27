@@ -95,12 +95,14 @@ function Index() {
       </div>
 
       <h2 className="mt-10 font-display text-sm uppercase tracking-widest text-muted-foreground">4 · Herní mód</h2>
-      <div className="mt-3 grid gap-3 md:grid-cols-3">
+      <div className="mt-3 max-w-sm">
         <div className="max-w-sm">
           <label className="block text-sm font-semibold text-muted-foreground">Tvoje přezdívka
             <input value={nickname} onChange={(event) => { const value = event.target.value.slice(0, 16); setNickname(value); localStorage.setItem("az:name", value); }} maxLength={16} placeholder="Např. Chmelák" className="mt-2 w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground" />
           </label>
         </div>
+      </div>
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
         <button
           type="button"
           onClick={() => void createBeerRoomNow()}
