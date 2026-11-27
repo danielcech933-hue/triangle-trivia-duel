@@ -96,19 +96,19 @@ function Index() {
 
       <h2 className="mt-10 font-display text-sm uppercase tracking-widest text-muted-foreground">4 · Herní mód</h2>
       <div className="mt-3 grid gap-3 md:grid-cols-3">
+        <div className="max-w-sm">
+          <label className="block text-sm font-semibold text-muted-foreground">Tvoje přezdívka
+            <input value={nickname} onChange={(event) => { const value = event.target.value.slice(0, 16); setNickname(value); localStorage.setItem("az:name", value); }} maxLength={16} placeholder="Např. Chmelák" className="mt-2 w-full rounded-xl border border-input bg-background px-3 py-3 text-foreground" />
+          </label>
+        </div>
         <button
           type="button"
-          onClick={() => {
-            const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-            const room = Array.from({ length: 5 }, () => alphabet[Math.floor(Math.random() * alphabet.length)]).join("");
-            const hostId = crypto.randomUUID();
-            if (!localStorage.getItem("az:name")) localStorage.setItem("az:name", "Chmelák");
-            window.location.assign("/pivni-kviz/" + room + "?host=" + encodeURIComponent(hostId));
-          }}
-          className="rounded-xl border border-amber-500/60 bg-card/70 p-5 text-left hover:brightness-110"
+          onClick={() => void createBeerRoomNow()}
+          disabled={beerCreating || !nickname.trim()}
+          className="rounded-xl border border-amber-500/60 bg-card/70 p-5 text-left transition-all hover:brightness-110 disabled:opacity-50"
         >
-          <div className="font-display text-xl font-bold text-amber-500">🍺 Pivní kvíz</div>
-          <div className="text-sm text-muted-foreground">Kliknutím založíš vlastní místnost. Pošli odkaz kamarádům a hrajte spolu.</div>
+          <div className="font-display text-xl font-bold text-amber-500">{beerCreating ? "🍺 Zakládám místnost…" : "🍺 Pivní kvíz"}</div>
+          <div className="text-sm text-muted-foreground">Kliknutím rovnou vytvoříš novou partii a staneš se hostitelem. Kamarády pozveš odkazem.</div>
         </button>
         <Link to="/online" search={{ cat, players, difficulty }} className="rounded-xl border border-player-a/60 bg-card/70 p-5 hover:glow-a">
           <div className="font-display text-xl font-bold text-player-a">Online místnost</div>
