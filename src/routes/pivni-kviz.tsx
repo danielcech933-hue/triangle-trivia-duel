@@ -19,9 +19,9 @@ function BeerLobby() {
     const room = Array.from({ length: 5 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
     const hostId = crypto.randomUUID();
     if (!localStorage.getItem("az:name")) localStorage.setItem("az:name", "Chmelák");
-    sessionStorage.setItem("beer:host:" + room, hostId);
-    localStorage.setItem("beer:host:" + room, hostId);
-    navigate({ to: "/pivni-kviz/$code", params: { code: room }, replace: true });
+    // The host capability travels with this browser URL, so route transitions and refreshes
+    // cannot accidentally turn the room creator into a guest.
+    window.location.replace("/pivni-kviz/" + room + "?host=" + encodeURIComponent(hostId));
   }, [navigate]);
 
   return <main className="mx-auto max-w-md space-y-4 px-4 py-16 text-center">
@@ -65,8 +65,9 @@ function BeerRoom() {
   }, []);
 
   useEffect(() => {
-    const hostId = sessionStorage.getItem("beer:host:" + code) || localStorage.getItem("beer:host:" + code);
-    const isCreator = !!hostId;
+    const params = new URLSearchParams(window.location.search);
+    const hostId = params.get("host");
+    const isCreator = Boolean(hostId);
     const id = hostId || sessionStorage.getItem("beer:client") || crypto.randomUUID();
     if (!hostId) sessionStorage.setItem("beer:client", id);
     myId.current = id;
@@ -163,7 +164,7 @@ function BeerRoom() {
     <h1 className="font-display text-2xl font-bold">Připojování k hospodskému stolu</h1>
     <p className="text-muted-foreground">{connectionError || "Navazuji spojení s online místností…"}</p>
     {connectionError && <button onClick={() => window.location.reload()} className="rounded-xl bg-amber-500 px-5 py-3 font-bold text-black">Zkusit znovu</button>}
-    <Link to="/pivni-kviz" className="block text-sm text-muted-foreground underline">Zpět na Pivní kvíz</Link>
+    <Link to="/" className="block text-sm text-muted-foreground underline">Zpět na hlavní lobby</Link>
   </main>;
   if (!current) return <main className="mx-auto max-w-md space-y-4 px-4 py-16 text-center">
     <div className="text-4xl">🍺</div>
@@ -174,11 +175,11 @@ function BeerRoom() {
   </main>;
 
   if (current.phase === "lobby") return <main className="mx-auto max-w-xl space-y-5 px-4 py-10">
-    <div className="flex items-center justify-between"><Link to="/pivni-kviz" className="font-display font-bold">🍺 PIVNÍ KVÍZ</Link><span className="text-xs text-muted-foreground">Místnost {code}</span></div>
+    <div className="flex items-center justify-between"><Link to="/" className="font-display font-bold">🍺 PIVNÍ KVÍZ</Link><span className="text-xs text-muted-foreground">Místnost {code}</span></div>
     <div className="rounded-2xl border border-amber-500/30 bg-card p-6 text-center">
       <div className="text-xs uppercase tracking-widest text-muted-foreground">Pošli kámošům odkaz</div>
       <div className="mt-2 font-display text-5xl font-black tracking-[0.25em] text-amber-500">{code}</div>
-      <button onClick={() => { navigator.clipboard.writeText(window.location.href); setCopied(true); }} className="mt-3 rounded-lg border border-border px-4 py-2">{copied ? "Odkaz zkopírován ✓" : "Zkopírovat odkaz"}</button>
+      <button onClick={() => { const invite = new URL(window.location.href); invite.searchParams.delete("host"); navigator.clipboard.writeText(invite.toString()); setCopied(true); }} className="mt-3 rounded-lg border border-border px-4 py-2">{copied ? "Odkaz zkopírován ✓" : "Zkopírovat odkaz"}</button>
     </div>
     <div className="rounded-2xl border border-border bg-card p-5">
       <h2 className="font-display text-xl font-bold">U stolu ({current.players.length}/12)</h2>
@@ -189,7 +190,7 @@ function BeerRoom() {
   </main>;
 
   return <main className="mx-auto max-w-3xl space-y-5 px-4 py-6 md:py-10">
-    <header className="flex items-center justify-between"><Link to="/pivni-kviz" className="font-display text-xl font-black">🍺 PIVNÍ KVÍZ</Link><span className="text-sm text-muted-foreground">Kolo {current.round}</span></header>
+    <header className="flex items-center justify-between"><Link to="/" className="font-display text-xl font-black">🍺 PIVNÍ KVÍZ</Link><span className="text-sm text-muted-foreground">Kolo {current.round}</span></header>
     <section className="rounded-2xl border border-border bg-card p-4">
       <div className="flex flex-wrap gap-2">{current.players.map((p) => <div key={p.id} className={`rounded-full border px-3 py-2 text-sm ${p.id === current.describer ? "border-amber-500 bg-amber-500/10 text-amber-500" : "border-border"}`}>{p.name}: <b>{p.score}</b></div>)}</div>
     </section>
