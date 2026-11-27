@@ -1,104 +1,86 @@
-import { QUESTIONS, type CategoryId, type Question } from "./questions";
-import { normalize } from "./validate";
+import { QUESTIONS, type Question } from "./questions";
 
-export type BeerPhase = "lobby" | "describe" | "guess" | "result";
-export interface BeerPlayer { id: string; name: string; score: number }
-export interface BeerWord { id: string; word: string; category: CategoryId }
-export interface BeerState {
-  seq: number;
-  phase: BeerPhase;
-  players: BeerPlayer[];
-  round: number;
-  describer: string;
-  word: BeerWord | null;
-  used: string[];
-  guesses: string[];
-  lastGuess: string;
-  lastResult: { ok: boolean; by: string | null; answer: string } | null;
-  winner: string | null;
+export type BeerPhase = "lobby" | "describe" | "guess" | "result" | "closed";
+
+export interface BeerWord {
+  id: string;
+  word: string;
+  answers: string[];
 }
-export type BeerAction =
-  | { type: "JOIN"; player: BeerPlayer }
-  | { type: "START" }
-  | { type: "GUESS"; playerId: string; text: string }
-  | { type: "PASS" }
-  | { type: "NEXT" }
-  | { type: "RESET" };
 
-const bank = QUESTIONS.filter((q) => q.answers.length > 0);
-const wordFromQuestion = (q: Question): BeerWord => ({
-  id: q.id, word: q.answers[0]!, category: q.cat,
-});
-const shuffledPick = (used: string[]): BeerWord | null => {
-  const available = bank.filter((q) => !used.includes(q.id));
-  const pool = available.length ? available : bank;
+export interface BeerPlayer {
+  id: string;
+  name: string;
+  score: number;
+  is_host: boolean;
+  is_me: boolean;
+  online: boolean;
+}
+
+export interface BeerGuess {
+  player_id: string;
+  player_name: string;
+  guess: string;
+  correct: boolean;
+}
+
+export interface BeerGameState {
+  phase: BeerPhase;
+  round: number;
+  describer_id: string | null;
+  word_id?: string | null;
+  /** Only returned to the current describer. */
+  word?: string | null;
+  /** Only returned after a round has finished. */
+  answer?: string | null;
+  used_word_ids: string[];
+  guesses: BeerGuess[];
+  winner_id: string | null;
+  winner_name: string | null;
+  last_guess: string | null;
+}
+
+export interface BeerRoomSnapshot {
+  code: string;
+  revision: number;
+  state: BeerGameState;
+  players: BeerPlayer[];
+  closed_at: string | null;
+  expires_at: string;
+}
+
+const BANK: Question[] = QUESTIONS.filter((question) => question.answers.length > 0);
+
+export function chooseBeerWord(usedIds: string[] = []): { word: BeerWord; resetUsed: boolean } {
+  const available = BANK.filter((question) => !usedIds.includes(question.id));
+  const resetUsed = available.length === 0;
+  const pool = resetUsed ? BANK : available;
   const picked = pool[Math.floor(Math.random() * pool.length)];
-  return picked ? wordFromQuestion(picked) : null;
-};
+  if (!picked) throw new Error("Databáze AZ kvízu neobsahuje žádná použitelná slova.");
 
-export function createBeerGame(host: BeerPlayer): BeerState {
   return {
-    seq: 0, phase: "lobby", players: [host], round: 0, describer: host.id,
-    word: null, used: [], guesses: [], lastGuess: "", lastResult: null, winner: null,
+    resetUsed,
+    word: {
+      id: picked.id,
+      word: picked.answers[0]!,
+      answers: [...picked.answers],
+    },
   };
 }
 
-export function beerPublicState(state: BeerState): BeerState {
-  return { ...state, word: null };
+export function beerQuestionCount(): number {
+  return BANK.length;
 }
 
-export function reduceBeer(state: BeerState, action: BeerAction): BeerState {
-  const next = (patch: Partial<BeerState>) => ({ ...state, ...patch, seq: state.seq + 1 });
-  switch (action.type) {
-    case "JOIN": {
-      if (state.phase !== "lobby" || state.players.some((p) => p.id === action.player.id)) return state;
-      if (state.players.length >= 12) return state;
-      return next({ players: [...state.players, { ...action.player, name: action.player.name.slice(0, 16), score: 0 }] });
-    }
-    case "START": {
-      if (state.phase !== "lobby" || state.players.length < 2) return state;
-      const word = shuffledPick(state.used);
-      if (!word) return state;
-      return next({
-        phase: "describe", round: 1, describer: state.players[0]!.id,
-        word, used: [...state.used, word.id], guesses: [], lastGuess: "", lastResult: null,
-      });
-    }
-    case "GUESS": {
-      if (state.phase !== "guess" || !state.word || action.playerId === state.describer) return state;
-      const player = state.players.find((p) => p.id === action.playerId);
-      if (!player) return state;
-      const guess = action.text.trim().slice(0, 80);
-      if (!guess) return state;
-      const ok = normalize(guess) === normalize(state.word.word) ||
-        state.word.word.split(/\s+/).some((part) => part.length >= 4 && normalize(part) === normalize(guess));
-      const players = ok ? state.players.map((p) => p.id === player.id ? { ...p, score: p.score + 1 } : p) : state.players;
-      return next({
-        phase: "result", players, lastGuess: guess,
-        lastResult: { ok, by: ok ? player.id : null, answer: state.word.word },
-        winner: null,
-      });
-    }
-    case "PASS":
-      if (state.phase !== "describe") return state;
-      return next({ phase: "guess" });
-    case "NEXT": {
-      if (state.phase !== "result" && state.phase !== "guess") return state;
-      const idx = state.players.findIndex((p) => p.id === state.describer);
-      const describer = state.players[(idx + 1) % state.players.length]!.id;
-      const word = shuffledPick(state.used);
-      if (!word) return state;
-      return next({
-        phase: "describe", round: state.round + 1, describer, word,
-        used: [...(state.used.length >= bank.length ? [] : state.used), word.id],
-        guesses: [], lastGuess: "", lastResult: null,
-      });
-    }
-    case "RESET":
-      return next({
-        phase: "lobby", players: state.players.map((p) => ({ ...p, score: 0 })),
-        round: 0, describer: state.players[0]?.id ?? "", word: null,
-        used: [], guesses: [], lastGuess: "", lastResult: null, winner: null,
-      });
-  }
+export function makeRoomCode(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+}
+
+export function makeSecretToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
