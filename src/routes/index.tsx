@@ -1,7 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { CATEGORIES, DIFFICULTIES, QUESTIONS, type CategoryId, type Difficulty } from "@/lib/quiz/questions";
 import { cn } from "@/lib/utils";
+import { createBeerRoom } from "@/lib/quiz/beer-api";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,6 +22,29 @@ function Index() {
   const [cat, setCat] = useState<CategoryId>("mix");
   const [players, setPlayers] = useState<2 | 3>(2);
   const [difficulty, setDifficulty] = useState<Difficulty>("mix");
+  const [nickname, setNickname] = useState("Chmelák");
+  const [beerCreating, setBeerCreating] = useState(false);
+  const [beerError, setBeerError] = useState("");
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const saved = localStorage.getItem("az:name");
+    if (saved) setNickname(saved);
+  }, []);
+
+  const createBeerRoomNow = async () => {
+    if (beerCreating) return;
+    setBeerCreating(true);
+    setBeerError("");
+    try {
+      const created = await createBeerRoom(nickname.trim() || "Chmelák");
+      await navigate({ to: "/pivni-kviz/$code", params: { code: created.code } });
+    } catch (cause) {
+      setBeerError(cause instanceof Error ? cause.message : "Místnost se nepodařilo vytvořit.");
+    } finally {
+      setBeerCreating(false);
+    }
+  };
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-10 md:py-16">
@@ -99,6 +123,7 @@ function Index() {
           <div className="text-sm text-muted-foreground">Jeden hráč proti počítači na klasické desce.</div>
         </Link>
       </div>
+      {beerError && <p className="mt-3 text-sm text-destructive">{beerError}</p>}
 
       <details className="mt-10 rounded-xl border border-border bg-card/50 p-4 text-sm text-muted-foreground">
         <summary className="cursor-pointer font-display text-foreground">Pravidla</summary>
