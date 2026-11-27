@@ -58,7 +58,7 @@ export const BeerRoomRoute = createFileRoute("/pivni-kviz/$code")({
   component: BeerRoom,
 });
 
-type Peer = { id: string; name: string; at: number };
+type Peer = { id: string; name: string; at: number; role?: "host" | "guest"; gameState?: BeerState | null };
 
 function BeerRoom() {
   const { code } = BeerRoomRoute.useParams();
@@ -81,7 +81,9 @@ function BeerRoom() {
     if (next === current) return;
     stateRef.current = next;
     setState(next);
-    channel.current?.send({ type: "broadcast", event: "state", payload: beerPublicState(next) });
+    const publicState = beerPublicState(next);
+    channel.current?.send({ type: "broadcast", event: "state", payload: publicState });
+    channel.current?.track({ name: localStorage.getItem("az:name") || "Hostitel", at: Date.now(), role: "host", gameState: publicState });
   }, []);
 
   useEffect(() => {
@@ -103,9 +105,15 @@ function BeerRoom() {
     channel.current = ch;
 
     ch.on("presence", { event: "sync" }, () => {
-      const presence = ch.presenceState<{ name: string; at: number }>();
-      const list = Object.entries(presence).flatMap(([peerId, entries]) => entries[0] ? [{ id: peerId, name: entries[0].name, at: entries[0].at }] : []);
+      const presence = ch.presenceState<{ name: string; at: number; role?: "host" | "guest"; gameState?: BeerState | null }>();
+      const list = Object.entries(presence).flatMap(([peerId, entries]) => entries[0] ? [{ id: peerId, ...entries[0] }] : []);
       setPeers(list);
+      if (!isCreator) {
+        const hostPresence = list.find((peer) => peer.role === "host" && peer.gameState);
+        if (hostPresence?.gameState) {
+          setState((previous) => !previous || hostPresence.gameState!.seq >= previous.seq ? hostPresence.gameState! : previous);
+        }
+      }
       if (isCreator && stateRef.current?.phase === "lobby") {
         const players: BeerPlayer[] = list.sort((a, b) => a.at - b.at).map((p) => ({ id: p.id, name: p.name, score: 0 }));
         const current = stateRef.current;
@@ -114,7 +122,9 @@ function BeerRoom() {
           const synced = { ...current, players, seq: current.seq + 1 };
           stateRef.current = synced;
           setState(synced);
-          ch.send({ type: "broadcast", event: "state", payload: beerPublicState(synced) });
+          const publicState = beerPublicState(synced);
+          ch.send({ type: "broadcast", event: "state", payload: publicState });
+          ch.track({ name: playerName, at: Date.now(), role: "host", gameState: publicState });
         }
       }
     });
@@ -144,7 +154,10 @@ function BeerRoom() {
     ch.subscribe(async (status, err) => {
       if (status === "SUBSCRIBED") {
         setConnectionError("");
-        await ch.track({ name: playerName, at: Date.now() });
+        await ch.track({
+          name: playerName, at: Date.now(), role: isCreator ? "host" : "guest",
+          gameState: isCreator && stateRef.current ? beerPublicState(stateRef.current) : null,
+        });
         if (isCreator && stateRef.current) {
           ch.send({ type: "broadcast", event: "state", payload: beerPublicState(stateRef.current) });
         } else {
