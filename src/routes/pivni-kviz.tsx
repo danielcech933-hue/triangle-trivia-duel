@@ -109,9 +109,9 @@ function BeerRoom() {
       if (isCreator && stateRef.current?.phase === "lobby") {
         const players: BeerPlayer[] = list.sort((a, b) => a.at - b.at).map((p) => ({ id: p.id, name: p.name, score: 0 }));
         const current = stateRef.current;
-        if (players.length !== current.players.length || players.some((p, i) => p.id !== current.players[i]?.id || p.name !== current.players[i]?.name)) {
-          hostDispatch({ type: "RESET" });
-          const synced = { ...stateRef.current!, players, seq: stateRef.current!.seq + 1 };
+        const same = players.length === current.players.length && players.every((p, i) => p.id === current.players[i]?.id && p.name === current.players[i]?.name);
+        if (!same) {
+          const synced = { ...current, players, seq: current.seq + 1 };
           stateRef.current = synced;
           setState(synced);
           ch.send({ type: "broadcast", event: "state", payload: beerPublicState(synced) });
@@ -178,10 +178,10 @@ function BeerRoom() {
     </section>
     <section className="rounded-3xl border border-amber-500/30 bg-gradient-to-br from-amber-500/10 via-card to-card p-6 text-center md:p-10">
       <div className="text-xs uppercase tracking-[0.25em] text-muted-foreground">{isDescriber ? "Ty popisuješ" : describer?.name + " právě popisuje"}</div>
-      {isDescriber && current.phase === "describe" && current.word && <><div className="mt-5 text-4xl font-black text-amber-500 md:text-6xl">{current.word.word}</div><p className="mt-3 text-sm text-muted-foreground">Popiš slovo vlastními slovy. Neříkej jeho název ani jeho část.</p><button onClick={() => hostDispatch({ type: "PASS" })} className="mt-6 rounded-xl bg-amber-500 px-6 py-3 font-bold text-black">Ostatní, začněte hádat</button></>}
+      {isDescriber && current.phase === "describe" && host && current.word && <><div className="mt-5 text-4xl font-black text-amber-500 md:text-6xl">{current.word.word}</div><p className="mt-3 text-sm text-muted-foreground">Popiš slovo vlastními slovy. Neříkej jeho název ani jeho část.</p><button onClick={() => hostDispatch({ type: "PASS" })} className="mt-6 rounded-xl bg-amber-500 px-6 py-3 font-bold text-black">Ostatní, začněte hádat</button></>}
       {!isDescriber && current.phase === "describe" && <p className="mt-5 text-lg">Poslouchejte popis a připravte tipy. Popisující: {describer?.name}.</p>}
       {current.phase === "guess" && <>{isDescriber ? <p className="mt-5">Ostatní hádají…</p> : <form onSubmit={(e) => { e.preventDefault(); if (guess.trim()) { sendAction({ type: "GUESS", playerId: me, text: guess }); setGuess(""); } }} className="mt-5 flex gap-2"><input autoFocus value={guess} onChange={(e) => setGuess(e.target.value)} placeholder="Co je to za slovo?" className="min-w-0 flex-1 rounded-xl border border-input bg-background px-3 py-3" /><button className="rounded-xl bg-primary px-5 font-bold text-primary-foreground">Tipnout</button></form>}</>}
-      {current.phase === "result" && current.lastResult && <div className="mt-5 space-y-3"><div className={`text-2xl font-black ${current.lastResult.ok ? "text-green-500" : "text-destructive"}`}>{current.lastResult.ok ? "Správně! Bod získává " + (current.lastResult.by === me ? "ty" : current.players.find(p => p.id === current.lastResult?.by)?.name) : "Tentokrát ne!"}</div><div className="text-3xl font-black text-amber-500">{host || isDescriber ? current.lastResult.answer : (revealed ? current.lastResult.answer : "••••••••")}</div>{host && <button onClick={() => hostDispatch({ type: "NEXT" })} className="rounded-xl bg-amber-500 px-6 py-3 font-bold text-black">Další slovo →</button>}{!host && <p className="text-sm text-muted-foreground">Čekáme na další slovo…</p>}</div>}
+      {current.phase === "result" && current.lastResult && <div className="mt-5 space-y-3"><div className={`text-2xl font-black ${current.lastResult.ok ? "text-green-500" : "text-destructive"}`}>{current.lastResult.ok ? "Správně! Bod získává " + (current.lastResult.by === me ? "ty" : current.players.find(p => p.id === current.lastResult?.by)?.name) : "Tentokrát ne!"}</div><div className="text-3xl font-black text-amber-500">{current.lastResult.answer}</div>{host && <button onClick={() => hostDispatch({ type: "NEXT" })} className="rounded-xl bg-amber-500 px-6 py-3 font-bold text-black">Další slovo →</button>}{!host && <p className="text-sm text-muted-foreground">Čekáme na další slovo…</p>}</div>}
     </section>
     {current.phase === "describe" && !isDescriber && <p className="text-center text-sm text-muted-foreground">Až popisující domluví, spustí hádání. Každý může zadat svůj tip.</p>}
     <div className="rounded-2xl border border-border bg-card p-4"><div className="font-display font-bold">Pravidla u stolu</div><p className="mt-1 text-sm text-muted-foreground">Jen popisující vidí tajné slovo. Ostatní tipují vlastními slovy. První správný tip získá bod a další kolo popisuje další hráč po směru hodinových ručiček.</p></div>
